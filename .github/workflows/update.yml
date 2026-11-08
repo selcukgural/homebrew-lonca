@@ -76,6 +76,7 @@ jobs:
         env:
           VERSION: ${{ steps.latest.outputs.version }}
         run: |
+          mkdir -p Formula # git keeps no empty directory: absent until the first formula
           sh scripts/formula.sh "$VERSION" dl/SHA256SUMS > Formula/lonca.rb
           cat Formula/lonca.rb
       - if: steps.latest.outputs.changed == 'true'
