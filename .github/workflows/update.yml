@@ -1,0 +1,146 @@
+name: update
+
+# Writes Formula/lonca.rb for the latest published release of
+# selcukgural/lonca, every day and on demand (`gh workflow run update.yml
+# --repo selcukgural/homebrew-lonca`).
+#
+# Nothing is taken on trust: every archive must match the release's
+# SHA256SUMS and carry a build provenance attestation signed by lonca's
+# release.yml on a tag. The new formula is installed and tested on macOS and
+# Linux before it is committed. A draft or pre-release is never "latest", so
+# it never reaches the tap. Lonca's repository holds no token for this one:
+# the commit is made with this repository's own.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  formula:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.latest.outputs.version }}
+      changed: ${{ steps.latest.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The latest release, and whether the formula has it
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api repos/selcukgural/lonca/releases/latest --jq .tag_name)
+          case "$tag" in
+            v[0-9]*) ;;
+            *) echo "not a release tag: $tag" >&2; exit 1 ;;
+          esac
+          version=${tag#v}
+          have=$(sed -n 's/^  version "\(.*\)"$/\1/p' Formula/lonca.rb 2>/dev/null || true)
+          echo "latest $version, formula ${have:-none}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$have" = "$version" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Download, check the checksums and the attestations
+        if: steps.latest.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          mkdir dl
+          gh release download "v$VERSION" --repo selcukgural/lonca --dir dl \
+            --pattern 'lonca-*-*.tar.gz' --pattern SHA256SUMS
+          cd dl
+          set -- lonca-*-*.tar.gz
+          test "$#" -eq 4
+          grep -E '  lonca-[a-z0-9_]+-[a-z0-9_-]+\.tar\.gz$' SHA256SUMS | sha256sum --check --strict
+          for f in "$@"; do
+            gh attestation verify "$f" --repo selcukgural/lonca \
+              --signer-workflow selcukgural/lonca/.github/workflows/release.yml \
+              --source-ref "refs/tags/v$VERSION"
+          done
+      - name: The formula
+        if: steps.latest.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          sh scripts/formula.sh "$VERSION" dl/SHA256SUMS > Formula/lonca.rb
+          cat Formula/lonca.rb
+      - if: steps.latest.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: formula
+          path: Formula/lonca.rb
+          if-no-files-found: error
+
+  # Installs the new formula from a local tap and runs its test.
+  test:
+    needs: formula
+    if: needs.formula.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: formula
+          path: Formula
+      - name: Install and test from a local tap
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          fi
+          # brew taps a git repository: the formula must be committed.
+          git add Formula/lonca.rb
+          git -c user.name=ci -c user.email=ci@localhost commit -q -m test
+          brew tap selcukgural/lonca "$GITHUB_WORKSPACE"
+          brew install selcukgural/lonca/lonca
+          brew test selcukgural/lonca/lonca
+          lonca --version
+
+  commit:
+    needs: [formula, test]
+    if: needs.formula.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # the formula's commit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: formula
+          path: Formula
+      - name: Commit and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.formula.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          git add Formula/lonca.rb
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "lonca $VERSION"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic $auth" \
+            push "https://github.com/$REPO.git" HEAD:main
