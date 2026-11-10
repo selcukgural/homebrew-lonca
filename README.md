@@ -1,8 +1,14 @@
 # Homebrew tap for Lonca
 
 ```sh
-brew install selcukgural/lonca/lonca
+brew tap selcukgural/lonca
+brew trust --formula selcukgural/lonca/lonca
+brew install lonca
 ```
+
+The middle line is for Homebrew 7 and newer, which loads a formula from a tap
+that is not its own only once you trust it; an older Homebrew has no
+`brew trust` and does not need it.
 
 Installs `lonca`, `lonca-audit` and, on macOS, `lonca-se` (the Secure Enclave
 helper) from the [Lonca releases](https://github.com/selcukgural/lonca/releases):
