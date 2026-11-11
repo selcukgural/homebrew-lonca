@@ -1,30 +1,30 @@
-# Written by scripts/formula.sh from the SHA256SUMS of Lonca v0.2.2.
+# Written by scripts/formula.sh from the SHA256SUMS of Lonca v0.2.3.
 # Do not edit by hand: update.yml writes it again for every release.
 class Lonca < Formula
   desc "Agent-native, Git-compatible version control"
   homepage "https://selcukgural.github.io/lonca/"
-  version "0.2.2"
+  version "0.2.3"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
-      url "https://github.com/selcukgural/lonca/releases/download/v0.2.2/lonca-aarch64-apple-darwin.tar.gz"
-      sha256 "ff0cae4e43e183cbf457609dc9d1258725335bd6679f7aa6ce4ddea4e4d34e50"
+      url "https://github.com/selcukgural/lonca/releases/download/v0.2.3/lonca-aarch64-apple-darwin.tar.gz"
+      sha256 "06df197ff4b2e5a799c242389c1db09e03e5bdb5f2a3968b7396542ddfe6d320"
     end
     on_intel do
-      url "https://github.com/selcukgural/lonca/releases/download/v0.2.2/lonca-x86_64-apple-darwin.tar.gz"
-      sha256 "c23303c559e881d7fb4186e53b2eef8e3b902c93eb7d4a624e85eab9c5b7b116"
+      url "https://github.com/selcukgural/lonca/releases/download/v0.2.3/lonca-x86_64-apple-darwin.tar.gz"
+      sha256 "d7eada1ad1ec70938ba03fe44867313e453d5c7889bf68a56f9dbe2db4d68442"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/selcukgural/lonca/releases/download/v0.2.2/lonca-aarch64-unknown-linux-musl.tar.gz"
-      sha256 "e4b083fa8afeb30e1bfa3cce5ac5cf18e8b9e4758f4d1cc99c628cae062535ed"
+      url "https://github.com/selcukgural/lonca/releases/download/v0.2.3/lonca-aarch64-unknown-linux-musl.tar.gz"
+      sha256 "6609f93d01a1aa3869b3f2358d4674107c94d724ad818893b43b05c7522b7db7"
     end
     on_intel do
-      url "https://github.com/selcukgural/lonca/releases/download/v0.2.2/lonca-x86_64-unknown-linux-musl.tar.gz"
-      sha256 "dcd45be2e269baa679774c30853055c59f4ce6c0ede1b5cfa794e07bf33abc3a"
+      url "https://github.com/selcukgural/lonca/releases/download/v0.2.3/lonca-x86_64-unknown-linux-musl.tar.gz"
+      sha256 "1ebea80893af916a73410b1991b54fab74d6f76eac4cac4f818fb0cfaf27e010"
     end
   end
 
